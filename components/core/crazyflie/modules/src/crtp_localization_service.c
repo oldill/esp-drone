@@ -191,7 +191,11 @@ static void extPosePackedHandler(const CRTPPacket* pk) {
       ext_pose.x = item->x / 1000.0f;
       ext_pose.y = item->y / 1000.0f;
       ext_pose.z = item->z / 1000.0f;
-      quatdecompress(item->quat, (float *)&ext_pose.quat.q0);
+      quatdecompress_to_elements(item->quat,
+                                 &ext_pose.quat.q0,
+                                 &ext_pose.quat.q1,
+                                 &ext_pose.quat.q2,
+                                 &ext_pose.quat.q3);
       ext_pose.stdDevPos = extPosStdDev;
       ext_pose.stdDevQuat = extQuatStdDev;
       estimatorEnqueuePose(&ext_pose);

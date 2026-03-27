@@ -56,6 +56,10 @@
 #include "sensors_mpu6050_hm5883L_ms5611.h"
 #endif
 
+#ifdef SENSOR_INCLUDED_MPU6050_QMC5883P_MS5611
+#include "sensors_mpu6050_hm5883L_ms5611.h"
+#endif
+
 typedef struct {
   SensorImplementation_t implements;
   void (*init)(void);
@@ -115,6 +119,24 @@ static const sensorsImplementation_t sensorImplementations[SensorImplementation_
 #ifdef SENSOR_INCLUDED_MPU6050_HMC5883L_MS5611
   {
     .implements = SensorImplementation_mpu6050_HMC5883L_MS5611,
+    .init = sensorsMpu6050Hmc5883lMs5611Init,
+    .test = sensorsMpu6050Hmc5883lMs5611Test,
+    .areCalibrated = sensorsMpu6050Hmc5883lMs5611AreCalibrated,
+    .manufacturingTest = sensorsMpu6050Hmc5883lMs5611ManufacturingTest,
+    .acquire = sensorsMpu6050Hmc5883lMs5611Acquire,
+    .waitDataReady = sensorsMpu6050Hmc5883lMs5611WaitDataReady,
+    .readGyro = sensorsMpu6050Hmc5883lMs5611ReadGyro,
+    .readAcc = sensorsMpu6050Hmc5883lMs5611ReadAcc,
+    .readMag = sensorsMpu6050Hmc5883lMs5611ReadMag,
+    .readBaro = sensorsMpu6050Hmc5883lMs5611ReadBaro,
+    .setAccMode = sensorsMpu6050Hmc5883lMs5611SetAccMode,
+    .dataAvailableCallback = nullFunction,
+  }
+#endif
+#ifdef SENSOR_INCLUDED_MPU6050_QMC5883P_MS5611
+  ,
+  {
+    .implements = SensorImplementation_mpu6050_QMC5883P_MS5611,
     .init = sensorsMpu6050Hmc5883lMs5611Init,
     .test = sensorsMpu6050Hmc5883lMs5611Test,
     .areCalibrated = sensorsMpu6050Hmc5883lMs5611AreCalibrated,

@@ -83,4 +83,15 @@ static inline void quatdecompress(uint32_t comp, float q[4])
 	q[i_largest] = sqrtf(1.0f - sum_squares);
 }
 
+static inline void quatdecompress_to_elements(uint32_t comp, float *q0, float *q1, float *q2, float *q3)
+{
+	float q[4];
+
+	quatdecompress(comp, q);
+	*q0 = q[0];
+	*q1 = q[1];
+	*q2 = q[2];
+	*q3 = q[3];
+}
+
 #endif // QUATCOMPRESS_H

@@ -307,7 +307,7 @@ struct fullStatePacket_s {
   int16_t ax;        // acceleration - mm / sec^2
   int16_t ay;
   int16_t az;
-  int32_t quat;      // compressed quaternion, see quatcompress.h
+  uint32_t quat;     // compressed quaternion, see quatcompress.h
   int16_t rateRoll;  // angular velocity - milliradians / sec
   int16_t ratePitch; //  (NOTE: limits to about 5 full circles per sec.
   int16_t rateYaw;   //   may not be enough for extremely aggressive flight.)
@@ -334,7 +334,11 @@ static void fullStateDecoder(setpoint_t *setpoint, uint8_t type, const void *dat
   setpoint->attitudeRate.pitch = millirad2deg * values->ratePitch;
   setpoint->attitudeRate.yaw = millirad2deg * values->rateYaw;
 
-  quatdecompress(values->quat, (float *)&setpoint->attitudeQuaternion.q0);
+  quatdecompress_to_elements(values->quat,
+                             &setpoint->attitudeQuaternion.q0,
+                             &setpoint->attitudeQuaternion.q1,
+                             &setpoint->attitudeQuaternion.q2,
+                             &setpoint->attitudeQuaternion.q3);
   setpoint->mode.quat = modeAbs;
   setpoint->mode.roll = modeDisable;
   setpoint->mode.pitch = modeDisable;

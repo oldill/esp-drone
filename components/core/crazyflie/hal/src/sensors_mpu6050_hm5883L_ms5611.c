@@ -55,6 +55,7 @@
 // #include "lps25h.h"
 #include "mpu6050.h"
 #include "hmc5883l.h"
+#include "qmc5883p.h"
 #include "ms5611.h"
 // #include "ak8963.h"
 #include "zranger.h"
@@ -74,16 +75,35 @@
 
 //#define GYRO_ADD_RAW_AND_VARIANCE_LOG_VALUES
 
-#define MAG_GAUSS_PER_LSB 666.7f
-
 /**
  * Enable sensors on board 
  */
+#define SENSORS_ENABLE_MAG_QMC5883P
 // #define SENSORS_ENABLE_MAG_HM5883L
-// #define SENSORS_ENABLE_PRESSURE_MS5611
+#define SENSORS_ENABLE_PRESSURE_MS5611
 //#define SENSORS_ENABLE_RANGE_VL53L0X
 #define SENSORS_ENABLE_RANGE_VL53L1X
 #define SENSORS_ENABLE_FLOW_PMW3901
+
+#if defined(SENSORS_ENABLE_MAG_QMC5883P) && defined(SENSORS_ENABLE_MAG_HM5883L)
+#error "Enable only one magnetometer driver: QMC5883P or HMC5883L"
+#endif
+
+#if defined(SENSORS_ENABLE_MAG_QMC5883P)
+#define MAG_GAUSS_PER_LSB QMC5883P_LSB_PER_GAUSS_8G
+#define MAG_I2C_ADDRESS QMC5883P_ADDRESS
+#define MAG_SLAVE_START_REGISTER QMC5883P_RA_CHIP_ID
+#define MAG_READY_BUFFER_INDEX 9
+#define SENSORS_MAG_BUFF_LEN 10
+#elif defined(SENSORS_ENABLE_MAG_HM5883L)
+#define MAG_GAUSS_PER_LSB 666.7f
+#define MAG_I2C_ADDRESS HMC5883L_ADDRESS
+#define MAG_SLAVE_START_REGISTER HMC5883L_RA_MODE
+#define MAG_READY_BUFFER_INDEX 7
+#define SENSORS_MAG_BUFF_LEN 8
+#else
+#define SENSORS_MAG_BUFF_LEN 0
+#endif
 
 #define SENSORS_GYRO_FS_CFG MPU6050_GYRO_FS_2000
 #define SENSORS_DEG_PER_LSB_CFG MPU6050_DEG_PER_LSB_2000
@@ -101,7 +121,6 @@
 // Buffer length for MPU9250 slave reads
 #define GPIO_INTA_MPU6050_IO CONFIG_MPU_PIN_INT
 #define SENSORS_MPU6050_BUFF_LEN 14
-#define SENSORS_MAG_BUFF_LEN 8
 #define SENSORS_BARO_BUFF_S_P_LEN MS5611_D1D2_SIZE
 #define SENSORS_BARO_BUFF_T_LEN MS5611_D1D2_SIZE
 #define SENSORS_BARO_BUFF_LEN (SENSORS_BARO_BUFF_S_P_LEN + SENSORS_BARO_BUFF_T_LEN)
@@ -176,8 +195,8 @@ static bool isVl53l0xPresent = false;
 static bool isPmw3901Present = false;
 #endif
 static bool isMpu6050TestPassed = false;
-#ifdef SENSORS_ENABLE_MAG_HM5883L
-static bool isHmc5883lTestPassed = false;
+#if defined(SENSORS_ENABLE_MAG_HM5883L) || defined(SENSORS_ENABLE_MAG_QMC5883P)
+static bool isMagnetometerTestPassed = false;
 #endif
 #ifdef SENSORS_ENABLE_PRESSURE_MS5611
 static bool isMs5611TestPassed = false;
@@ -321,20 +340,29 @@ void processBarometerMeasurements(const uint8_t *buffer)
 
 void processMagnetometerMeasurements(const uint8_t *buffer)
 {
-    //TODO: replace it to hmc5883l
-    if (buffer[7] & (1 << HMC5883L_STATUS_READY_BIT)) {
-        int16_t headingx = (((int16_t)buffer[2]) << 8) | buffer[1]; //hmc5883 different from
+#if defined(SENSORS_ENABLE_MAG_QMC5883P)
+    if ((buffer[0] == QMC5883P_CHIP_ID_VALUE) &&
+            (buffer[MAG_READY_BUFFER_INDEX] & (1 << QMC5883P_STATUS_DRDY_BIT)) &&
+            !(buffer[MAG_READY_BUFFER_INDEX] & (1 << QMC5883P_STATUS_OVFL_BIT))) {
+        int16_t headingx = (((int16_t)buffer[2]) << 8) | buffer[1];
+        int16_t headingy = (((int16_t)buffer[4]) << 8) | buffer[3];
+        int16_t headingz = (((int16_t)buffer[6]) << 8) | buffer[5];
+
+        sensorData.mag.x = (float)headingx / MAG_GAUSS_PER_LSB;
+        sensorData.mag.y = (float)headingy / MAG_GAUSS_PER_LSB;
+        sensorData.mag.z = (float)headingz / MAG_GAUSS_PER_LSB;
+    }
+#elif defined(SENSORS_ENABLE_MAG_HM5883L)
+    if (buffer[MAG_READY_BUFFER_INDEX] & (1 << HMC5883L_STATUS_READY_BIT)) {
+        int16_t headingx = (((int16_t)buffer[2]) << 8) | buffer[1];
         int16_t headingz = (((int16_t)buffer[4]) << 8) | buffer[3];
         int16_t headingy = (((int16_t)buffer[6]) << 8) | buffer[5];
 
-        sensorData.mag.x = (float)headingx / MAG_GAUSS_PER_LSB; //to gauss
+        sensorData.mag.x = (float)headingx / MAG_GAUSS_PER_LSB;
         sensorData.mag.y = (float)headingy / MAG_GAUSS_PER_LSB;
         sensorData.mag.z = (float)headingz / MAG_GAUSS_PER_LSB;
-        DEBUG_PRINTI("hmc5883l DATA ready");
-    } else {
-
-        DEBUG_PRINTW("hmc5883l DATA not ready");
     }
+#endif
 }
 
 void processAccGyroMeasurements(const uint8_t *buffer)
@@ -484,6 +512,20 @@ static void sensorsDeviceInit(void)
     }
 
 #endif
+#ifdef SENSORS_ENABLE_MAG_QMC5883P
+    qmc5883pInit(I2C0_DEV);
+
+    if (qmc5883pTestConnection() == true) {
+        isMagnetometerPresent = true;
+        qmc5883pSetRange(QMC5883P_RANGE_8G);
+        qmc5883pSetDataRate(QMC5883P_ODR_100HZ);
+        qmc5883pSetMode(QMC5883P_MODE_CONTINUOUS);
+        DEBUG_PRINTI("qmc5883p I2C connection [OK].\n");
+    } else {
+        DEBUG_PRINTW("qmc5883p I2C connection [FAIL].\n");
+    }
+
+#endif
 #ifdef SENSORS_ENABLE_PRESSURE_MS5611
     ms5611Init(I2C0_DEV);
 
@@ -571,16 +613,16 @@ static void sensorsSetupSlaveRead(void)
     mpu6050SetSlaveReadWriteTransitionEnabled(false); // Send a stop at the end of a slave read
     mpu6050SetMasterClockSpeed(13);                   // Set i2c speed to 400kHz
 
-#ifdef SENSORS_ENABLE_MAG_HM5883L
+#if defined(SENSORS_ENABLE_MAG_HM5883L) || defined(SENSORS_ENABLE_MAG_QMC5883P)
 
     if (isMagnetometerPresent) {
         // Set registers for mpu6050 master to read from
-        mpu6050SetSlaveAddress(0, 0x80 | HMC5883L_ADDRESS);        // set the magnetometer to Slave 0, enable read
-        mpu6050SetSlaveRegister(0, HMC5883L_RA_MODE);       // read the magnetometer heading register
-        mpu6050SetSlaveDataLength(0, SENSORS_MAG_BUFF_LEN); // hmc5883l:model,x,z,y,status ak8963:read 8 bytes (ST1, x, y, z heading, ST2 (overflow check))
+        mpu6050SetSlaveAddress(0, 0x80 | MAG_I2C_ADDRESS);
+        mpu6050SetSlaveRegister(0, MAG_SLAVE_START_REGISTER);
+        mpu6050SetSlaveDataLength(0, SENSORS_MAG_BUFF_LEN);
         mpu6050SetSlaveDelayEnabled(0, true);
         mpu6050SetSlaveEnabled(0, true);
-        DEBUG_PRINTD("mpu6050SetSlaveAddress HMC5883L done \n");
+        DEBUG_PRINTD("mpu6050SetSlaveAddress MAG done \n");
     }
 
 #endif
@@ -708,12 +750,16 @@ bool sensorsMpu6050Hmc5883lMs5611Test(void)
 
     testStatus &= isMpu6050TestPassed;
 
-#ifdef SENSORS_ENABLE_MAG_HM5883L
+#if defined(SENSORS_ENABLE_MAG_HM5883L) || defined(SENSORS_ENABLE_MAG_QMC5883P)
     testStatus &= isMagnetometerPresent;
 
     if (testStatus) {
-        isHmc5883lTestPassed = hmc5883lSelfTest();
-        testStatus &= isHmc5883lTestPassed;
+#ifdef SENSORS_ENABLE_MAG_HM5883L
+    isMagnetometerTestPassed = hmc5883lSelfTest();
+#else
+    isMagnetometerTestPassed = qmc5883pSelfTest();
+#endif
+    testStatus &= isMagnetometerTestPassed;
     }
 
 #endif
