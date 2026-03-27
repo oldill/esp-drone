@@ -51,3 +51,36 @@ const MotorPerifDef *motorMapDefaultBrushed[NBR_OF_MOTORS] = {
     &CONN_M3,
     &CONN_M4
 };
+
+/* Brushless motor definitions (1503 3100KV equivalent) */
+// Connector M1 - Brushless
+static const MotorPerifDef CONN_M1_BRUSHLESS = {
+    .drvType = BRUSHLESS,
+};
+
+// Connector M2 - Brushless
+static const MotorPerifDef CONN_M2_BRUSHLESS = {
+    .drvType = BRUSHLESS,
+};
+
+// Connector M3 - Brushless
+static const MotorPerifDef CONN_M3_BRUSHLESS = {
+    .drvType = BRUSHLESS,
+};
+
+// Connector M4 - Brushless
+static const MotorPerifDef CONN_M4_BRUSHLESS = {
+    .drvType = BRUSHLESS,
+};
+
+/**
+ * Default brushless mapping to M1-M4 connectors.
+ * Used for brushless motors with ESCs (Electronic Speed Controllers).
+ * Suitable for 1503 3100KV brushless motors.
+ */
+const MotorPerifDef *motorMapDefaultBrushless[NBR_OF_MOTORS] = {
+    &CONN_M1_BRUSHLESS,
+    &CONN_M2_BRUSHLESS,
+    &CONN_M3_BRUSHLESS,
+    &CONN_M4_BRUSHLESS
+};

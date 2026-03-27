@@ -35,6 +35,7 @@
 #include "FreeRTOS.h"
 #include "num.h"
 #include "stm32_legacy.h"
+#include "motors.h"
 #define DEBUG_MODULE "MODE"
 #include "debug_cf.h"
 
@@ -165,9 +166,11 @@ void crtpCommanderRpytDecodeSetpoint(setpoint_t *setpoint, CRTPPacket *pk)
 
   if (commanderGetActivePriority() == COMMANDER_PRIORITY_DISABLE) {
     thrustLocked = true;
+    motorsSetSafetyGuard(true);
   }
   if (values->thrust == 0) {
     thrustLocked = false;
+    motorsSetSafetyGuard(false);
   }
 
   // Thrust

@@ -28,6 +28,13 @@
 #define DEBUG_MODULE "PLATFORM"
 #include "debug_cf.h"
 
+/* Select motor map based on configuration */
+#ifdef CONFIG_MOTOR_BRUSHLESS_1503
+    #define PLATFORM_MOTOR_MAP motorMapDefaultBrushless
+#else
+    #define PLATFORM_MOTOR_MAP motorMapDefaultBrushed
+#endif
+
 /*to support different hardware platform */
 static platformConfig_t configs[] = {
 
@@ -36,14 +43,14 @@ static platformConfig_t configs[] = {
         .deviceTypeName = "ESPlane 2.0 ",
         .sensorImplementation = SensorImplementation_mpu6050_QMC5883P_MS5611,
         .physicalLayoutAntennasAreClose = false,
-        .motorMap = motorMapDefaultBrushed,
+        .motorMap = PLATFORM_MOTOR_MAP,
     },
     {
         .deviceType = "ED12",
         .deviceTypeName = "ESP_Drone_v1_2",
         .sensorImplementation = SensorImplementation_mpu6050_QMC5883P_MS5611,
         .physicalLayoutAntennasAreClose = false,
-        .motorMap = motorMapDefaultBrushed,
+        .motorMap = PLATFORM_MOTOR_MAP,
     },
 
 };

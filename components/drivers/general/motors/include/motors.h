@@ -147,7 +147,7 @@ typedef struct {
  */
 //extern const MotorPerifDef* motorMapNoMotors[NBR_OF_MOTORS];
 extern const MotorPerifDef *motorMapDefaultBrushed[NBR_OF_MOTORS];
-// extern const MotorPerifDef* motorMapDefaultConBrushless[NBR_OF_MOTORS];
+extern const MotorPerifDef *motorMapDefaultBrushless[NBR_OF_MOTORS];
 // extern const MotorPerifDef* motorMapBigQuadDeck[NBR_OF_MOTORS];
 // extern const MotorPerifDef* motorMapBoltBrushless[NBR_OF_MOTORS];
 
@@ -178,6 +178,17 @@ bool motorsTest(void);
  * Set the PWM ratio of the motor 'id'
  */
 void motorsSetRatio(uint32_t id, uint16_t ratio);
+
+/**
+ * Enable/disable global motor safety guard.
+ * When enabled, all motor outputs > 0 are forced to 0.
+ */
+void motorsSetSafetyGuard(bool enabled);
+
+/**
+ * Returns true if the motor safety guard is currently enabled.
+ */
+bool motorsIsSafetyGuardEnabled(void);
 
 /**
  * Get the PWM ratio of the motor 'id'. Return -1 if wrong ID.

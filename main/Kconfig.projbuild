@@ -302,6 +302,13 @@ menu "ESPDrone Config"
     
             config MOTOR_BRUSHED_720
                 bool "brushed 720 motor"
+
+            config MOTOR_BRUSHLESS_1503
+                bool "brushless 1503 motor (3100KV with ESCs)"
+                help
+                    Brushless motor with Electronic Speed Controllers (ESCs).
+                    Supports 1503 3100KV and similar brushless motors.
+                    Requires ESCs capable of standard PWM input.
         endchoice
 
         config MOTOR01_PIN
@@ -347,6 +354,69 @@ menu "ESPDrone Config"
             default 4 if TARGET_ESP32_S2_DRONE_V1_2
             help
                 GPIO number (IOxx) MOTOR04_PIN
+
+        config ESC_ARM_ON_BOOT
+            bool "Run ESC arming at boot"
+            depends on MOTOR_BRUSHLESS_1503
+            default y
+            help
+                Keep all brushless ESC outputs at minimum throttle (1000us)
+                for a configurable time during startup.
+
+        config ESC_ARM_TIME_MS
+            int "ESC arming hold time (ms)"
+            depends on MOTOR_BRUSHLESS_1503 && ESC_ARM_ON_BOOT
+            range 500 10000
+            default 3000
+            help
+                Duration to hold minimum throttle at boot for ESC initialization.
+
+        choice
+            prompt "ESC arming mode"
+            depends on MOTOR_BRUSHLESS_1503 && ESC_ARM_ON_BOOT
+            default ESC_ARM_MODE_MIN_HOLD
+
+            config ESC_ARM_MODE_MIN_HOLD
+                bool "Min hold (1000us only)"
+                help
+                    Holds all ESC outputs at 1000us for ESC_ARM_TIME_MS.
+
+            config ESC_ARM_MODE_CALIBRATION
+                bool "Calibration (Min -> Max -> Min)"
+                help
+                    Sends max throttle for ESC calibration, then returns
+                    to minimum throttle. Remove propellers before use.
+        endchoice
+
+        config ESC_ARM_CALIB_HIGH_MS
+            int "ESC calibration max-throttle time (ms)"
+            depends on MOTOR_BRUSHLESS_1503 && ESC_ARM_ON_BOOT && ESC_ARM_MODE_CALIBRATION
+            range 500 5000
+            default 2000
+            help
+                Duration to hold max throttle in calibration mode.
+
+        config MOTOR_SAFETY_SELFTEST_ON_BOOT
+            bool "Run motor safety self-test at boot"
+            default y
+            help
+                Runs a short non-spinning self-test that forces all motor outputs
+                to minimum and verifies output-safe state before normal operation.
+
+        config MOTOR_SAFETY_SELFTEST_TIME_MS
+            int "Motor safety self-test hold time (ms)"
+            depends on MOTOR_SAFETY_SELFTEST_ON_BOOT
+            range 50 2000
+            default 200
+            help
+                Time to hold motor outputs in safe minimum state during self-test.
+
+        config MOTOR_REQUIRE_COMMANDER_UNLOCK
+            bool "Block motor output until commander unlock"
+            default y
+            help
+                Forces all motor outputs to zero until the commander explicitly
+                unlocks thrust. This prevents accidental spin-up at boot.
     endmenu
 
 
